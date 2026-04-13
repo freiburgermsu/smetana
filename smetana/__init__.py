@@ -6,3 +6,5 @@ __author__ = "Daniel Machado"
 __email__ = 'cdanielmachado@gmail.com'
 __version__ = '1.2.1'
 
+from .cobrapy import convert_cobrapy_model, convert_cobrapy_models, CobraModelCache
+

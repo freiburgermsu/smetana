@@ -10,6 +10,7 @@ from random import sample
 from reframed.io.cache import ModelCache
 from smetana.legacy import Community
 from math import inf
+from .cobrapy import convert_cobrapy_models, CobraModelCache
 
 
 def extract_id_from_filepath(filepath):
@@ -40,20 +41,29 @@ def build_cache(models, flavor=None):
     return ModelCache(ids, models, load_args=load_args, post_processing=post_process)
 
 
+def _is_cobrapy_model(obj):
+    """Check if an object is a COBRApy Model without requiring cobra as a dependency."""
+    return type(obj).__name__ == 'Model' and type(obj).__module__.startswith('cobra')
+
+
 def load_communities(models, communities, other, flavor):
-    if len(models) == 1 and '*' in models[0]:
-        pattern = models[0]
-        models = glob.glob(pattern)
-        if len(models) == 0:
-            raise RuntimeError("No files found: {}".format(pattern))
+    # Detect whether models are COBRApy objects or file paths
+    if len(models) > 0 and _is_cobrapy_model(models[0]):
+        model_cache = CobraModelCache(models)
+    else:
+        if len(models) == 1 and '*' in models[0]:
+            pattern = models[0]
+            models = glob.glob(pattern)
+            if len(models) == 0:
+                raise RuntimeError("No files found: {}".format(pattern))
+
+        model_cache = build_cache(models, flavor)
 
     if other is not None:
         df = pd.read_csv(other, header=None)
         other_models = set(df[0])
     else:
         other_models = set()
-
-    model_cache = build_cache(models, flavor)
 
     if communities is not None:
         df = pd.read_csv(communities, sep='\t', header=None, dtype=str)
