@@ -24,14 +24,17 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import cobra
 import pandas as pd
 from reframed import Environment
+from reframed.solvers import set_default_solver
+
+set_default_solver('gurobi')
 
 from smetana.cobrapy import convert_cobrapy_model
 from smetana.legacy import Community
 from smetana.smetana import sc_score, mu_score, mp_score
 
 # ── paths ────────────────────────────────────────────────────────────────────
-MODELS_DIR = "/Users/andrewfreiburger/Documents/Research/CommScores/data/processed/kchip/models_fixed"
-MEDIA_DIR  = "/Users/andrewfreiburger/Documents/Research/CommScores/data/processed/kchip/media"
+MODELS_DIR = "/home/freiburger/Documents/CommScores/data/processed/kchip/models_fixed"
+MEDIA_DIR  = "/home/freiburger/Documents/CommScores/data/processed/kchip/media"
 
 COLUMNS = ["community", "medium", "receiver", "donor", "compound",
            "scs", "mus", "mps", "smetana"]
@@ -41,10 +44,15 @@ COLUMNS = ["community", "medium", "receiver", "donor", "compound",
 
 def load_all_models(models_dir, verbose=False):
     """Load all .sbml models via COBRApy and convert to reframed, cached."""
-    sbml_files = sorted(glob.glob(os.path.join(models_dir, "*.sbml")))
+    sbml_files = sorted(glob.glob(os.path.join(models_dir, "*.sbml"))
+                        + glob.glob(os.path.join(models_dir, "*.xml")))
     models = {}
     for path in sbml_files:
-        name = os.path.basename(path).replace(".genome.mdl.sbml", "")
+        name = os.path.basename(path)
+        for suffix in (".genome.mdl.sbml", ".genome.mdl.xml", ".sbml", ".xml"):
+            if name.endswith(suffix):
+                name = name[:-len(suffix)]
+                break
         if verbose:
             print(f"  Loading {name} ...", end=" ", flush=True)
         t0 = time.time()
@@ -277,8 +285,8 @@ def main():
     # Write combined file
     if all_data:
         df_all = pd.DataFrame(all_data, columns=COLUMNS)
-        combined_path = os.path.join(args.output_dir, "all_detailed.tsv")
-        df_all.to_csv(combined_path, sep="\t", index=False)
+        combined_path = os.path.join(args.output_dir, "all_detailed.csv")
+        df_all.to_csv(combined_path, index=False)
         print(f"\nCombined results: {combined_path} ({len(df_all)} rows)")
 
     elapsed = time.time() - t_start
